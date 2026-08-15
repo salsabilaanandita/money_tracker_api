@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"money-tracker-api/config"
 	"money-tracker-api/internal/models"
@@ -38,5 +39,14 @@ func main() {
 	routes.SetupRoutes(r)
 
 	// Jalankan server
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Println("Server running on port:", port)
+
+	if err := r.Run("0.0.0.0:" + port); err != nil {
+		log.Fatal(err)
+	}
 }
