@@ -38,13 +38,24 @@ func RegisterUser(name, email, password string) (*models.User, error) {
 		}
 
 		categories := []models.Category{
-			{Name: "Makan & Minum", Type: "expense", UserID: user.ID},
+			// Expense — kebutuhan sehari-hari
+			{Name: "Makanan & Minuman", Type: "expense", UserID: user.ID},
 			{Name: "Transportasi", Type: "expense", UserID: user.ID},
 			{Name: "Tagihan & Utilitas", Type: "expense", UserID: user.ID},
-			{Name: "Belanja", Type: "expense", UserID: user.ID},
-			{Name: "Hiburan", Type: "expense", UserID: user.ID},
+			{Name: "Belanja & Kebutuhan Rumah Tangga", Type: "expense", UserID: user.ID},
+			{Name: "Kesehatan", Type: "expense", UserID: user.ID},
+			{Name: "Pendidikan", Type: "expense", UserID: user.ID},
+			{Name: "Perawatan Diri & Kecantikan", Type: "expense", UserID: user.ID},
+			{Name: "Pakaian & Fashion", Type: "expense", UserID: user.ID},
+			{Name: "Hiburan & Rekreasi", Type: "expense", UserID: user.ID},
+			{Name: "Cicilan & Asuransi", Type: "expense", UserID: user.ID},
+			{Name: "Lainnya", Type: "expense", UserID: user.ID},
+
+			// Income — sumber pemasukan
 			{Name: "Gaji", Type: "income", UserID: user.ID},
-			{Name: "Freelance", Type: "income", UserID: user.ID},
+			{Name: "Bonus & Tunjangan", Type: "income", UserID: user.ID},
+			{Name: "Freelance & Proyek Sampingan", Type: "income", UserID: user.ID},
+			{Name: "Investasi & Dividen", Type: "income", UserID: user.ID},
 			{Name: "Lainnya", Type: "income", UserID: user.ID},
 		}
 
