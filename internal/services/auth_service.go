@@ -4,9 +4,12 @@ import (
 	"errors"
 	"sync"
 
+	"money-tracker-api/config"
 	"money-tracker-api/internal/models"
 	"money-tracker-api/internal/repository"
 	"money-tracker-api/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 var (
@@ -26,7 +29,33 @@ func RegisterUser(name, email, password string) (*models.User, error) {
 		Password: hashedPassword,
 	}
 
-	if err := repository.CreateUser(user); err != nil {
+	// Pakai database transaction: kalau bikin kategori default gagal,
+	// pembuatan user juga dibatalkan (rollback), biar tidak ada user
+	// "yatim" tanpa kategori.
+	err = config.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
+
+		categories := []models.Category{
+			{Name: "Makan & Minum", Type: "expense", UserID: user.ID},
+			{Name: "Transportasi", Type: "expense", UserID: user.ID},
+			{Name: "Tagihan & Utilitas", Type: "expense", UserID: user.ID},
+			{Name: "Belanja", Type: "expense", UserID: user.ID},
+			{Name: "Hiburan", Type: "expense", UserID: user.ID},
+			{Name: "Gaji", Type: "income", UserID: user.ID},
+			{Name: "Freelance", Type: "income", UserID: user.ID},
+			{Name: "Lainnya", Type: "income", UserID: user.ID},
+		}
+
+		if err := tx.Create(&categories).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
