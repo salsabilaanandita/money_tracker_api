@@ -7,6 +7,7 @@ import (
 	"money-tracker-api/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // BudgetSummaryItem merepresentasikan ringkasan budget per kategori
@@ -21,22 +22,29 @@ type BudgetSummaryItem struct {
 }
 
 // GetBudgetSummary menangani GET /api/budgets/summary
-// Menampilkan perbandingan antara limit budget dan total pengeluaran per kategori
+// Menampilkan perbandingan antara limit budget dan total pengeluaran per kategori,
+// HANYA untuk budget & transaksi milik user yang login.
 func GetBudgetSummary(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	var budgets []models.Budget
-	config.DB.Find(&budgets)
+	config.DB.Where("user_id = ?", userID).Find(&budgets)
 
 	var summaries []BudgetSummaryItem
 
 	for _, budget := range budgets {
 		var category models.Category
-		config.DB.First(&category, "id = ?", budget.CategoryID)
+		config.DB.First(&category, "id = ? AND user_id = ?", budget.CategoryID, userID)
 
-		// Hitung total pengeluaran untuk kategori ini di bulan & tahun yang sama
 		var totalSpent float64
 		config.DB.Model(&models.Transaction{}).
-			Where("category_id = ? AND type = ? AND EXTRACT(MONTH FROM date) = ? AND EXTRACT(YEAR FROM date) = ?",
-				budget.CategoryID, "expense", budget.Month, budget.Year).
+			Where("category_id = ? AND type = ? AND user_id = ? AND EXTRACT(MONTH FROM date) = ? AND EXTRACT(YEAR FROM date) = ?",
+				budget.CategoryID, "expense", userID, budget.Month, budget.Year).
 			Select("COALESCE(SUM(amount), 0)").
 			Scan(&totalSpent)
 
@@ -62,21 +70,30 @@ type DashboardSummary struct {
 }
 
 // GetDashboardSummary menangani GET /api/dashboard/summary
+// HANYA menghitung wallet & transaksi milik user yang login.
 func GetDashboardSummary(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	var totalBalance float64
 	config.DB.Model(&models.Wallet{}).
+		Where("user_id = ?", userID).
 		Select("COALESCE(SUM(balance), 0)").
 		Scan(&totalBalance)
 
 	var totalIncome float64
 	config.DB.Model(&models.Transaction{}).
-		Where("type = ?", "income").
+		Where("type = ? AND user_id = ?", "income", userID).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalIncome)
 
 	var totalExpense float64
 	config.DB.Model(&models.Transaction{}).
-		Where("type = ?", "expense").
+		Where("type = ? AND user_id = ?", "expense", userID).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalExpense)
 

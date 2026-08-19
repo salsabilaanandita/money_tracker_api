@@ -52,6 +52,7 @@ func SetupRoutes(r *gin.Engine) {
 		// Budgets
 		protected.GET("/budgets", handlers.GetBudgets)
 		protected.POST("/budgets", handlers.CreateBudget)
+		protected.DELETE("/budgets/:id", handlers.DeleteBudget)
 		protected.GET("/budgets/summary", handlers.GetBudgetSummary)
 
 		// Savings

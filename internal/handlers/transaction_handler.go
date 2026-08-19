@@ -14,21 +14,25 @@ import (
 // GetTransactions menangani GET /api/transactions
 // Mendukung query param: type (income/expense), page, limit
 func GetTransactions(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	var transactions []models.Transaction
 
-	query := config.DB.Model(&models.Transaction{})
+	query := config.DB.Model(&models.Transaction{}).Where("user_id = ?", userID)
 
-	// Filter berdasarkan type kalau ada
 	transactionType := c.Query("type")
 	if transactionType != "" {
 		query = query.Where("type = ?", transactionType)
 	}
 
-	// Hitung total data (sebelum di-limit) untuk info pagination
 	var totalData int64
 	query.Count(&totalData)
 
-	// Pagination
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -56,6 +60,13 @@ func GetTransactions(c *gin.Context) {
 
 // GetTransactionByID menangani GET /api/transactions/:id
 func GetTransactionByID(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
@@ -63,7 +74,7 @@ func GetTransactionByID(c *gin.Context) {
 	}
 
 	var transaction models.Transaction
-	if err := config.DB.First(&transaction, "id = ?", id).Error; err != nil {
+	if err := config.DB.First(&transaction, "id = ? AND user_id = ?", id, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "transaksi tidak ditemukan"})
 		return
 	}
@@ -80,7 +91,6 @@ func CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	// Ambil user_id dari token JWT (di-set oleh AuthRequired middleware)
 	userIDStr := c.GetString("user_id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
@@ -95,27 +105,31 @@ func CreateTransaction(c *gin.Context) {
 
 // UpdateTransaction menangani PUT /api/transactions/:id
 func UpdateTransaction(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
 		return
 	}
 
-	// Cari transaksi yang mau diupdate
 	var transaction models.Transaction
-	if err := config.DB.First(&transaction, "id = ?", id).Error; err != nil {
+	if err := config.DB.First(&transaction, "id = ? AND user_id = ?", id, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "transaksi tidak ditemukan"})
 		return
 	}
 
-	// Bind data baru dari body request
 	var input models.Transaction
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Update field yang boleh diubah
 	transaction.WalletID = input.WalletID
 	transaction.CategoryID = input.CategoryID
 	transaction.Amount = input.Amount
@@ -129,13 +143,20 @@ func UpdateTransaction(c *gin.Context) {
 
 // DeleteTransaction menangani DELETE /api/transactions/:id
 func DeleteTransaction(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
 		return
 	}
 
-	result := config.DB.Delete(&models.Transaction{}, "id = ?", id)
+	result := config.DB.Where("user_id = ?", userID).Delete(&models.Transaction{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "transaksi tidak ditemukan"})
 		return

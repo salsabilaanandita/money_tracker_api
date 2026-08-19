@@ -17,8 +17,15 @@ type CategoryInput struct {
 
 // GetCategories menangani GET /api/categories
 func GetCategories(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	var categories []models.Category
-	config.DB.Find(&categories)
+	config.DB.Where("user_id = ?", userID).Find(&categories)
 	c.JSON(http.StatusOK, gin.H{"data": categories})
 }
 
@@ -30,7 +37,6 @@ func CreateCategory(c *gin.Context) {
 		return
 	}
 
-	// Ambil user_id dari token JWT (di-set oleh AuthRequired middleware)
 	userIDStr := c.GetString("user_id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
@@ -46,13 +52,20 @@ func CreateCategory(c *gin.Context) {
 
 // DeleteCategory menangani DELETE /api/categories/:id
 func DeleteCategory(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
 		return
 	}
 
-	result := config.DB.Delete(&models.Category{}, "id = ?", id)
+	result := config.DB.Where("user_id = ?", userID).Delete(&models.Category{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "kategori tidak ditemukan"})
 		return
@@ -62,13 +75,18 @@ func DeleteCategory(c *gin.Context) {
 }
 
 // DeleteAllCategories menangani DELETE /api/categories
-// PERINGATAN: ini menghapus SEMUA kategori tanpa terkecuali, dipakai untuk bersih-bersih
-// data testing. Sebaiknya endpoint ini dihapus/dinonaktifkan sebelum aplikasi go-live,
-// karena tidak ada pengecekan kepemilikan data di sini.
+// Hanya menghapus kategori milik user yang login, BUKAN semua kategori di database.
 func DeleteAllCategories(c *gin.Context) {
-	result := config.DB.Where("1 = 1").Delete(&models.Category{})
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
+	result := config.DB.Where("user_id = ?", userID).Delete(&models.Category{})
 	c.JSON(http.StatusOK, gin.H{
-		"message":       "semua kategori berhasil dihapus",
+		"message":       "semua kategori kamu berhasil dihapus",
 		"total_deleted": result.RowsAffected,
 	})
 }

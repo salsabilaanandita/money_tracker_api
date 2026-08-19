@@ -12,8 +12,15 @@ import (
 
 // GetWallets menangani GET /api/wallets
 func GetWallets(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	var wallets []models.Wallet
-	config.DB.Find(&wallets)
+	config.DB.Where("user_id = ?", userID).Find(&wallets)
 	c.JSON(http.StatusOK, gin.H{"data": wallets})
 }
 
@@ -25,7 +32,6 @@ func CreateWallet(c *gin.Context) {
 		return
 	}
 
-	// Ambil user_id dari token JWT (di-set oleh AuthRequired middleware)
 	userIDStr := c.GetString("user_id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
@@ -40,27 +46,32 @@ func CreateWallet(c *gin.Context) {
 
 // UpdateWallet menangani PUT /api/wallets/:id
 func UpdateWallet(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
 		return
 	}
 
-	// Cari wallet yang mau diupdate
+	// Cari wallet yang mau diupdate, HARUS milik user yang login
 	var wallet models.Wallet
-	if err := config.DB.First(&wallet, "id = ?", id).Error; err != nil {
+	if err := config.DB.First(&wallet, "id = ? AND user_id = ?", id, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "wallet tidak ditemukan"})
 		return
 	}
 
-	// Bind data baru dari body request
 	var input models.Wallet
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Update field yang boleh diubah
 	wallet.Name = input.Name
 	wallet.Type = input.Type
 	wallet.Balance = input.Balance
@@ -71,13 +82,20 @@ func UpdateWallet(c *gin.Context) {
 
 // DeleteWallet menangani DELETE /api/wallets/:id
 func DeleteWallet(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
 		return
 	}
 
-	result := config.DB.Delete(&models.Wallet{}, "id = ?", id)
+	result := config.DB.Where("user_id = ?", userID).Delete(&models.Wallet{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "wallet tidak ditemukan"})
 		return
