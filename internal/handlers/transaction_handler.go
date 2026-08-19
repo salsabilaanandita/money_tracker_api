@@ -6,9 +6,11 @@ import (
 
 	"money-tracker-api/config"
 	"money-tracker-api/internal/models"
+	"money-tracker-api/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // GetTransactions menangani GET /api/transactions
@@ -83,10 +85,11 @@ func GetTransactionByID(c *gin.Context) {
 }
 
 // CreateTransaction menangani POST /api/transactions
-// TODO: tambahkan logic update balance wallet di service layer
+// Memakai services.CreateTransaction supaya saldo wallet ikut ter-update otomatis:
+// income -> balance bertambah, expense -> balance berkurang.
 func CreateTransaction(c *gin.Context) {
-	var transaction models.Transaction
-	if err := c.ShouldBindJSON(&transaction); err != nil {
+	var input models.Transaction
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -97,14 +100,65 @@ func CreateTransaction(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
 		return
 	}
-	transaction.UserID = userID
+	input.UserID = userID
 
-	config.DB.Create(&transaction)
-	c.JSON(http.StatusCreated, gin.H{"data": transaction})
+	err = config.DB.Transaction(func(tx *gorm.DB) error {
+		return services.CreateTransaction(tx, &input)
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": input})
 }
 
 // UpdateTransaction menangani PUT /api/transactions/:id
+// Memakai services.UpdateTransaction: efek transaksi lama di-revert dulu dari wallet,
+// baru efek transaksi baru diterapkan (bisa beda wallet juga).
 func UpdateTransaction(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
+		return
+	}
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
+		return
+	}
+
+	var oldTransaction models.Transaction
+	if err := config.DB.First(&oldTransaction, "id = ? AND user_id = ?", id, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "transaksi tidak ditemukan"})
+		return
+	}
+
+	var input models.Transaction
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = config.DB.Transaction(func(tx *gorm.DB) error {
+		return services.UpdateTransaction(tx, &oldTransaction, &input)
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": oldTransaction})
+}
+
+// DeleteTransaction menangani DELETE /api/transactions/:id
+// Memakai services.DeleteTransaction supaya saldo wallet dikembalikan
+// sebelum data transaksinya dihapus.
+func DeleteTransaction(c *gin.Context) {
 	userIDStr := c.GetString("user_id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
@@ -124,41 +178,12 @@ func UpdateTransaction(c *gin.Context) {
 		return
 	}
 
-	var input models.Transaction
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	err = config.DB.Transaction(func(tx *gorm.DB) error {
+		return services.DeleteTransaction(tx, &transaction)
+	})
 
-	transaction.WalletID = input.WalletID
-	transaction.CategoryID = input.CategoryID
-	transaction.Amount = input.Amount
-	transaction.Type = input.Type
-	transaction.Description = input.Description
-	transaction.Date = input.Date
-
-	config.DB.Save(&transaction)
-	c.JSON(http.StatusOK, gin.H{"data": transaction})
-}
-
-// DeleteTransaction menangani DELETE /api/transactions/:id
-func DeleteTransaction(c *gin.Context) {
-	userIDStr := c.GetString("user_id")
-	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user tidak valid"})
-		return
-	}
-
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id tidak valid"})
-		return
-	}
-
-	result := config.DB.Where("user_id = ?", userID).Delete(&models.Transaction{}, "id = ?", id)
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transaksi tidak ditemukan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
