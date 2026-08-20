@@ -66,6 +66,10 @@ func SetupRoutes(r *gin.Engine) {
 		// Dashboard
 		protected.GET("/dashboard/summary", handlers.GetDashboardSummary)
 
+		// Preferences
+		protected.GET("/preferences", handlers.GetPreferences)
+		protected.PUT("/preferences", handlers.UpdatePreferences)
+
 		// Logout
 		protected.POST("/auth/logout", handlers.Logout)
 	}

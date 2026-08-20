@@ -27,6 +27,7 @@ func main() {
 		&models.Budget{},
 		&models.SavingsGoal{},
 		&models.SavingEntry{},
+		&models.UserPreference{},
 	)
 	if err != nil {
 		log.Fatal("Gagal migrasi database: ", err)
