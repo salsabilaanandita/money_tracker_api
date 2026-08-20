@@ -11,23 +11,21 @@ import (
 )
 
 // UpdatePreferenceInput adalah body yang diterima saat user menekan "Simpan Perubahan".
-// Semua field opsional (pointer) supaya klien bisa mengirim hanya field yang berubah.
+// Semua field opsional (pointer) supaya klien bisa mengirim hanya field yang berubah,
+// tapi frontend saat ini selalu mengirim semua field sekaligus.
 type UpdatePreferenceInput struct {
 	// Tampilan
-	Theme          *string `json:"theme"`
-	Language       *string `json:"language"`
-	CurrencyFormat *string `json:"currency_format"`
+	Theme *string `json:"theme"`
 
 	// Notifikasi
-	NotifTransaction     *bool `json:"notif_transaction"`
-	NotifBudgetAlert     *bool `json:"notif_budget_alert"`
-	NotifSavingsReminder *bool `json:"notif_savings_reminder"`
-	NotifEmail           *bool `json:"notif_email"`
+	BudgetNotification      *bool `json:"budget_notification"`
+	TransactionNotification *bool `json:"transaction_notification"`
+	SavingsNotification     *bool `json:"savings_notification"`
+	ReminderNotification    *bool `json:"reminder_notification"`
 
 	// Privasi
-	HideBalance        *bool `json:"hide_balance"`
-	BiometricLock      *bool `json:"biometric_lock"`
-	ShareDataAnalytics *bool `json:"share_data_analytics"`
+	PrivateMode *bool `json:"private_mode"`
+	HideBalance *bool `json:"hide_balance"`
 }
 
 // getOrCreatePreference mengambil preferensi milik user, jika belum ada maka
@@ -95,36 +93,27 @@ func UpdatePreferences(c *gin.Context) {
 	if input.Theme != nil {
 		pref.Theme = *input.Theme
 	}
-	if input.Language != nil {
-		pref.Language = *input.Language
-	}
-	if input.CurrencyFormat != nil {
-		pref.CurrencyFormat = *input.CurrencyFormat
-	}
 
 	// Notifikasi
-	if input.NotifTransaction != nil {
-		pref.NotifTransaction = *input.NotifTransaction
+	if input.BudgetNotification != nil {
+		pref.BudgetNotification = *input.BudgetNotification
 	}
-	if input.NotifBudgetAlert != nil {
-		pref.NotifBudgetAlert = *input.NotifBudgetAlert
+	if input.TransactionNotification != nil {
+		pref.TransactionNotification = *input.TransactionNotification
 	}
-	if input.NotifSavingsReminder != nil {
-		pref.NotifSavingsReminder = *input.NotifSavingsReminder
+	if input.SavingsNotification != nil {
+		pref.SavingsNotification = *input.SavingsNotification
 	}
-	if input.NotifEmail != nil {
-		pref.NotifEmail = *input.NotifEmail
+	if input.ReminderNotification != nil {
+		pref.ReminderNotification = *input.ReminderNotification
 	}
 
 	// Privasi
+	if input.PrivateMode != nil {
+		pref.PrivateMode = *input.PrivateMode
+	}
 	if input.HideBalance != nil {
 		pref.HideBalance = *input.HideBalance
-	}
-	if input.BiometricLock != nil {
-		pref.BiometricLock = *input.BiometricLock
-	}
-	if input.ShareDataAnalytics != nil {
-		pref.ShareDataAnalytics = *input.ShareDataAnalytics
 	}
 
 	if err := config.DB.Save(&pref).Error; err != nil {
