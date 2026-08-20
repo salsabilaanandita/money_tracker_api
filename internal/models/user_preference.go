@@ -9,25 +9,24 @@ import (
 
 // UserPreference menyimpan pengaturan tampilan, notifikasi, dan privasi milik user.
 // Satu user hanya punya satu baris preferensi (relasi 1-1 dengan User).
+// Nama field JSON di sini HARUS sama dengan yang dikirim frontend (lihat type
+// Preferences di halaman Preferensi Next.js).
 type UserPreference struct {
 	ID     uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID uuid.UUID `gorm:"type:uuid;not null;unique" json:"user_id"`
 
 	// --- Tampilan ---
-	Theme          string `gorm:"not null;default:'light'" json:"theme"`         // light, dark, system
-	Language       string `gorm:"not null;default:'id'" json:"language"`         // id, en
-	CurrencyFormat string `gorm:"not null;default:'IDR'" json:"currency_format"` // IDR, USD, dst
+	Theme string `gorm:"not null;default:'system'" json:"theme"` // light, dark, system
 
 	// --- Notifikasi ---
-	NotifTransaction     bool `gorm:"not null;default:true" json:"notif_transaction"`      // notifikasi transaksi baru
-	NotifBudgetAlert     bool `gorm:"not null;default:true" json:"notif_budget_alert"`     // notifikasi budget mendekati/lewat batas
-	NotifSavingsReminder bool `gorm:"not null;default:true" json:"notif_savings_reminder"` // pengingat target tabungan
-	NotifEmail           bool `gorm:"not null;default:false" json:"notif_email"`           // notifikasi via email
+	BudgetNotification      bool `gorm:"not null;default:true" json:"budget_notification"`
+	TransactionNotification bool `gorm:"not null;default:true" json:"transaction_notification"`
+	SavingsNotification     bool `gorm:"not null;default:true" json:"savings_notification"`
+	ReminderNotification    bool `gorm:"not null;default:false" json:"reminder_notification"`
 
 	// --- Privasi ---
-	HideBalance        bool `gorm:"not null;default:false" json:"hide_balance"`         // sembunyikan saldo di halaman utama
-	BiometricLock      bool `gorm:"not null;default:false" json:"biometric_lock"`       // kunci aplikasi dengan biometrik
-	ShareDataAnalytics bool `gorm:"not null;default:false" json:"share_data_analytics"` // izinkan berbagi data untuk analitik
+	PrivateMode bool `gorm:"not null;default:false" json:"private_mode"`
+	HideBalance bool `gorm:"not null;default:false" json:"hide_balance"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
