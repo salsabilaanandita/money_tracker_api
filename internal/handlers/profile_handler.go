@@ -38,12 +38,10 @@ func GetProfile(c *gin.Context) {
 
 // ==========================================================
 // PUT /api/profile
-// Edit profile: ubah nama dan/atau username.
-// Field opsional, hanya yang dikirim yang diubah.
+// Edit profile: ubah nama.
 // ==========================================================
 type UpdateProfileInput struct {
-	Name     *string `json:"name"`
-	Username *string `json:"username"`
+	Name *string `json:"name"`
 }
 
 func UpdateProfile(c *gin.Context) {
@@ -73,24 +71,6 @@ func UpdateProfile(c *gin.Context) {
 			return
 		}
 		user.Name = name
-	}
-
-	if input.Username != nil {
-		username := strings.TrimSpace(*input.Username)
-		if username == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "username tidak boleh kosong"})
-			return
-		}
-
-		// Cek apakah username sudah dipakai user lain
-		var existing models.User
-		err := config.DB.Where("username = ? AND id <> ?", username, userID).First(&existing).Error
-		if err == nil {
-			c.JSON(http.StatusConflict, gin.H{"error": "username sudah digunakan"})
-			return
-		}
-
-		user.Username = username
 	}
 
 	if err := config.DB.Save(&user).Error; err != nil {
@@ -211,9 +191,6 @@ func UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// URL publik yang bisa diakses langsung dari frontend.
-	// Ditambahkan query "?v=" pakai timestamp supaya browser tidak
-	// menampilkan foto lama dari cache saat avatar diganti.
 	avatarURL := fmt.Sprintf("/uploads/avatars/%s", filename)
 
 	user.AvatarURL = avatarURL
