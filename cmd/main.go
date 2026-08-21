@@ -29,6 +29,7 @@ func main() {
 		&models.SavingEntry{},
 		&models.UserPreference{},
 	)
+
 	if err != nil {
 		log.Fatal("Gagal migrasi database: ", err)
 	}
@@ -36,11 +37,22 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
+	// ==========================================================
+	// STATIC FILES
+	// ==========================================================
+	// File upload:
+	// ./uploads/avatars/nama-file.webp
+	//
+	// Bisa diakses:
+	// /uploads/avatars/nama-file.webp
+	r.Static("/uploads", "./uploads")
+
 	// Daftarkan semua route
 	routes.SetupRoutes(r)
 
 	// Jalankan server
 	port := os.Getenv("PORT")
+
 	if port == "" {
 		port = "8080"
 	}
