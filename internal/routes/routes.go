@@ -70,6 +70,13 @@ func SetupRoutes(r *gin.Engine) {
 		protected.GET("/preferences", handlers.GetPreferences)
 		protected.PUT("/preferences", handlers.UpdatePreferences)
 
+		
+		// Profile
+		protected.GET("/profile", handlers.GetProfile)
+		protected.PUT("/profile", handlers.UpdateProfile)
+		protected.PUT("/profile/password", handlers.ChangePassword)
+		protected.POST("/profile/avatar", handlers.UploadAvatar)
+
 		// Logout
 		protected.POST("/auth/logout", handlers.Logout)
 	}
